@@ -1,1 +1,10 @@
 # Project exclude paths
+/data/before_cleaned_data.csv
+/requirements.txt
+/ckpt/bert_config_rbtl3.json
+/ckpt/bert_model.ckpt.data-00000-of-00001
+/ckpt/bert_model.ckpt.index
+/ckpt/bert_model.ckpt.meta
+/ckpt/chinese_rbtl3_L-3_H-1024_A-16.zip
+/ckpt/rbtl3-1.h5
+/ckpt/rbtl3-2.h5
