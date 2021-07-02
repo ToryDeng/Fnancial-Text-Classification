@@ -18,8 +18,6 @@ from stylecloud import gen_stylecloud
 from config import cfg
 
 
-
-
 def setup():
     plt.rcParams['font.sans-serif'] = ['SimHei']  # 步骤一（替换sans-serif字体）
     plt.rcParams['axes.unicode_minus'] = False  # 步骤二（解决坐标轴负数的负号显示问题）
@@ -79,6 +77,9 @@ def preprocess_raw_data(save_info=True):
         plt.close()
 
     # 带停用词的分词， 保存
+    jieba.load_userdict('data/companies.txt')  # 加载搜狗细胞词库转化而成的上市公司名称
+    jieba.add_word('企查查')  # '企查查'、'天眼查'这两个APP在金融文本中较为常见，且容易分错
+    jieba.add_word('天眼查')
     stopwords = [line.strip() for line in open('data/停用词.txt', encoding='gbk').readlines()]
     all_data['sep_content'] = all_data['content'].map(
         lambda x: ' '.join([wd for wd in jieba.cut(x) if len(wd) > 1 and wd not in stopwords])
@@ -89,7 +90,7 @@ def preprocess_raw_data(save_info=True):
 
 def plot_word_cloud():
     data = pd.read_csv("data/cleaned_data.csv", index_col=0)
-    all_content = ' '.join(data['content'].to_list())
+    all_content = ' '.join(data['sep_content'].to_list())
     gen_stylecloud(text=all_content,
                    font_path="C:/Windows/Fonts/simhei.ttf",
                    collocations=False,  # 避免关键词重复
@@ -188,8 +189,3 @@ class MyTokenizer(Tokenizer):
             else:
                 R.append('[UNK]')  # 剩余的字符是[UNK]
         return R
-
-
-
-
-

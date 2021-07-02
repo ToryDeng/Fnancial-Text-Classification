@@ -12,7 +12,7 @@ class Config:
         self.lstm_epoch = 10
         self.lstm_batch_size = 128
         # BERT specific
-        self.bert_epoch = 3
+        self.bert_epoch = 2
         self.bert_lr = 2e-5
         self.bert_batch_size = 32
         self.bert_cfg_path = 'ckpt/bert_config_rbtl3.json'
