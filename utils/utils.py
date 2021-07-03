@@ -1,5 +1,5 @@
-from typing import Union, List
-import os
+from typing import Union, List, Tuple
+from datetime import datetime
 import tensorflow as tf
 import jieba
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import f1_score, accuracy_score, balanced_accuracy_score
 from sklearn import naive_bayes
 from sklearn.linear_model import LogisticRegression
 from keras.utils import to_categorical
@@ -30,7 +30,7 @@ def setup():
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+            print(len(gpus), "Physical GPU(s),", len(logical_gpus), "Logical GPU(s)")
         except RuntimeError as e:
             # Memory growth must be set before GPUs have been initialized
             print(e)
@@ -41,13 +41,14 @@ def preprocess_raw_data(save_info=True):
     train_data = pd.read_csv("data/event_type_entity_extract_train.csv", header=None, usecols=[1, 2])
     eval_data = pd.read_csv("data/event_type_entity_extract_eval.csv", header=None, usecols=[1, 2])
     test_data = pd.read_csv("data/event_type_entity_extract_test.csv", header=None, usecols=[1, 2])
+    print(f"Total samples: {train_data.shape[0] + eval_data.shape[0]+test_data.shape[0]}")
 
     # 合并，预处理
     all_data = pd.concat([train_data, eval_data, test_data]).drop_duplicates().reset_index(drop=True)  # 三行重复
     all_data.rename(columns={1: 'content', 2: 'type'}, inplace=True)
     all_data['content'] = all_data['content'].str.strip()
     all_data['content'] = all_data['content'].str.replace(
-        r"【[\u4e00-\u9fa5]{1,2}】|【?[0-9OI\-]{9,20}】?|【?w{0,3}.\w+.[a-z]{2,3}】?|\[\[\+_\+]]|\(\d{6}\)", "", regex=True
+        r"【[\u4e00-\u9fa5]{1,2}】|【?[0-9OI\-*—]{9,20}】?|【?w{0,3}.\w+.[a-z]{2,3}】?|\[\[\+_\+]]|\(\d{6}\)", "", regex=True
     )  # 【头条】、【电话】、【网址】、(股票代码)
     all_data['type'] = all_data['type'].replace('公司股市异常', '股市异常')
     wrong_types = all_data['type'][~all_data['type'].duplicated(keep=False)].values
@@ -101,7 +102,7 @@ def plot_word_cloud():
     print('词云图已生成！')
 
 
-def train_val_test_split(X, y):
+def train_val_test_split(X, y) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, shuffle=True,
                                                                 test_size=cfg.test_size,
                                                                 random_state=cfg.random_seed)
@@ -119,7 +120,7 @@ def load_D2M():
 
 
 def load_bert_data(tokenizer, nrows=None):
-    def seq_padding(X, padding=0):  # 填充序列，默认填充0
+    def seq_padding(X, padding=0) -> np.ndarray:  # 填充序列，默认填充0
         L = [len(x) for x in X]  # 长度列表
         ML = max(L)  # 最大长度
         return np.array([np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x for x in X])
@@ -164,12 +165,19 @@ def evaluate(model, X_test: Union[np.ndarray, List[np.ndarray]], y_test: np.ndar
     if len(y_test.shape) > 1:
         y_test = np.argmax(y_test, axis=1)
 
+    start_time = datetime.now()
     y_pred = model.predict(X_test)
+    end_time = datetime.now()
     if len(y_pred.shape) > 1:
         y_pred = np.argmax(y_pred, axis=1)
     eval_result = pd.DataFrame(
-        data=[accuracy_score(y_test, y_pred), f1_score(y_test, y_pred, average='weighted')],
-        columns=[model_name], index=['Accuracy', 'F1 score']
+        data=[
+            balanced_accuracy_score(y_test, y_pred),
+            f1_score(y_test, y_pred, average='weighted'),
+            (end_time - start_time).total_seconds()
+        ],
+        columns=[model_name],
+        index=['Balanced Accuracy', 'F1 score', 'Pred time']
     )
     if model_name == 'RBTL3':
         print(eval_result)

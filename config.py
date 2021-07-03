@@ -10,7 +10,7 @@ class Config:
         # training params
         # LSTM specific
         self.lstm_epoch = 10
-        self.lstm_batch_size = 128
+        self.lstm_batch_size = 32
         # BERT specific
         self.bert_epoch = 2
         self.bert_lr = 2e-5

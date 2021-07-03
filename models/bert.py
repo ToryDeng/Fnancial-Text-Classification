@@ -2,7 +2,7 @@ import os
 from keras.layers import Input, Lambda, Dense
 from keras.models import Model, load_model
 from keras.optimizers import Adam
-from keras_bert import load_trained_model_from_checkpoint
+from keras_bert import load_trained_model_from_checkpoint, get_custom_objects
 import codecs
 from utils.utils import MyTokenizer, load_bert_data, evaluate
 from config import cfg
@@ -17,8 +17,9 @@ def run_bert():
 
     tokenizer = MyTokenizer(token_dict)
     X1_train, X2_train, y_train, X1_val, X2_val, y_val, X1_test, X2_test, y_test = load_bert_data(tokenizer)
-    if f'bert-{cfg.lstm_epoch}.h5' in os.listdir('ckpt/'):
-        model = load_model(f'ckpt/bert-{cfg.lstm_epoch}.h5')
+    print(f"There are {X1_test.shape[0]} samples in test set.")
+    if f'rbtl3-{cfg.bert_epoch}.h5' in os.listdir('ckpt/'):
+        model = load_model(f'ckpt/rbtl3-{cfg.bert_epoch}.h5', custom_objects=get_custom_objects())
     else:
         bert_model = load_trained_model_from_checkpoint(cfg.bert_cfg_path, cfg.bert_ckpt_path, seq_len=None)
 
@@ -30,7 +31,7 @@ def run_bert():
 
         x = bert_model([x1_in, x2_in])
         x = Lambda(lambda y: y[:, 0])(x)  # 取出[CLS]对应的向量用来做分类
-        p = Dense(y_train.shape[1], activation='sigmoid')(x)
+        p = Dense(y_train.shape[1], activation='softmax')(x)
 
         model = Model([x1_in, x2_in], p)
         model.compile(
